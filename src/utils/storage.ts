@@ -46,8 +46,8 @@ export const PRESET_IMAGE_OPTIONS: PresetImageOption[] = [
   {
     id: 'img-forest',
     name: 'Foresta Magica con Animali',
-    url: 'https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=1000&q=80',
-    category: 'Animali',
+    url: QUIZ_CARDS[4]?.imageSrc || QUIZ_CARDS[0].imageSrc,
+    category: 'Animali & Natura',
   },
   {
     id: 'img-kitchen',
@@ -79,7 +79,27 @@ export function loadQuizCards(): QuizCardData[] {
     if (!raw) return QUIZ_CARDS;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      // Heal any broken external image URLs (like old Unsplash forest photo) with the generated artwork
+      const healed = parsed.map((card: QuizCardData) => {
+        if (
+          !card.imageSrc ||
+          card.imageSrc.includes('unsplash.com/photo-1511497584788') ||
+          (card.titleIt && card.titleIt.toLowerCase().includes('foresta') && (!card.imageSrc || card.imageSrc.includes('unsplash')))
+        ) {
+          return { ...card, imageSrc: QUIZ_CARDS[4]?.imageSrc || card.imageSrc };
+        }
+        return card;
+      });
+
+      // If user had existing deck but doesn't have the new Foresta Magica card yet, add it
+      const hasForestCard = healed.some(
+        (c: QuizCardData) => c.id === 'card-5-forest' || (c.titleIt && c.titleIt.toLowerCase().includes('foresta'))
+      );
+      if (!hasForestCard && QUIZ_CARDS[4]) {
+        healed.push(QUIZ_CARDS[4]);
+      }
+
+      return healed;
     }
   } catch (err) {
     console.error('Failed to parse saved cards from localStorage:', err);
