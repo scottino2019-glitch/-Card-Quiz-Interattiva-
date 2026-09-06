@@ -1,0 +1,974 @@
+import { QuizCardData } from '../types';
+
+/**
+ * Generates an offline-ready, standalone, interactive single-file HTML widget
+ * for a single quiz card, ready to be embedded or opened in any browser/website.
+ */
+export function generateStandaloneCardHtml(card: QuizCardData): string {
+  const cardDataJson = JSON.stringify(card).replace(/</g, '\\u003c');
+
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(card.titleZh)} - ${escapeHtml(card.titleIt)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #23304d;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #f43f5e;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .widget-container {
+      width: 100%;
+      max-width: 580px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: rgba(79, 70, 229, 0.18);
+      color: #818cf8;
+      border: 1px solid rgba(129, 140, 248, 0.3);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .title .hanzi {
+      font-family: 'Noto Sans SC', sans-serif;
+      color: #a5b4fc;
+    }
+    .instructions {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .image-box {
+      width: 100%;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      position: relative;
+      background: #0f172a;
+      aspect-ratio: 4 / 3;
+      margin-bottom: 16px;
+    }
+    .image-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 480px) {
+      .grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .item-card {
+      background: #0f172a;
+      border: 1.5px solid var(--card-border);
+      border-radius: 14px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      position: relative;
+      min-height: 84px;
+    }
+    .item-card:hover {
+      border-color: #4338ca;
+      transform: translateY(-2px);
+    }
+    .item-card.selected {
+      background: rgba(79, 70, 229, 0.18);
+      border-color: #6366f1;
+      box-shadow: 0 0 14px rgba(99, 102, 241, 0.25);
+    }
+    .item-card.correct {
+      background: rgba(16, 185, 129, 0.18);
+      border-color: #10b981;
+    }
+    .item-card.wrong {
+      background: rgba(244, 63, 94, 0.18);
+      border-color: #f43f5e;
+    }
+    .hanzi-text {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+    }
+    .pinyin-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #a5b4fc;
+    }
+    .italian-text {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .check-circle {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: white;
+      transition: all 0.15s;
+    }
+    .item-card.selected .check-circle {
+      background: #4f46e5;
+      border-color: #4f46e5;
+    }
+    .audio-btn {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: transparent;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+    .audio-btn:hover {
+      color: #a5b4fc;
+      background: rgba(255,255,255,0.05);
+    }
+    .audio-btn svg {
+      width: 13px;
+      height: 13px;
+    }
+    .footer {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-secondary {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover {
+      background: #334155;
+      color: white;
+    }
+    .result-banner {
+      display: none;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      animation: fadeIn 0.2s ease;
+    }
+    .result-banner.show {
+      display: block;
+    }
+    .result-banner.perfect {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #34d399;
+    }
+    .result-banner.partial {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid #f59e0b;
+      color: #fbbf24;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-container">
+    <div class="header">
+      <span class="badge">SCHEDA #${card.cardNumber}</span>
+      <div class="title">
+        <span class="hanzi">${escapeHtml(card.titleZh)}</span>
+        <span>•</span>
+        <span>${escapeHtml(card.titleIt)}</span>
+      </div>
+      <p class="instructions">${escapeHtml(card.instructionIt)}</p>
+    </div>
+
+    <div class="image-box">
+      <img src="${card.imageSrc}" alt="${escapeHtml(card.titleIt)}" loading="lazy">
+    </div>
+
+    <div class="grid" id="items-grid">
+      ${card.items.map((item, idx) => `
+        <div class="item-card" data-id="${item.id}" data-idx="${idx}" onclick="toggleItem('${item.id}')">
+          <span class="check-circle" id="check-${item.id}"></span>
+          <div class="hanzi-text">${escapeHtml(item.character)}</div>
+          <div class="pinyin-text">${escapeHtml(item.pinyin)}</div>
+          <div class="italian-text">${escapeHtml(item.italian)}</div>
+          <button class="audio-btn" title="Pronuncia" onclick="event.stopPropagation(); playVoice('${escapeHtml(item.character)}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+          </button>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="footer">
+      <div id="result-banner" class="result-banner"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="resetQuiz()">Ricomincia</button>
+        <button class="btn btn-primary" id="verify-btn" onclick="verifyAnswers()">Verifica Risposte</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const cardData = ${cardDataJson};
+    let selectedIds = new Set();
+    let isVerified = false;
+
+    // Web Audio Sound Generator (no external audio files needed)
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function playBeep(freq, type, duration) {
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch(e) {}
+    }
+
+    function toggleItem(id) {
+      if (isVerified) return;
+      const el = document.querySelector('[data-id="' + id + '"]');
+      const checkEl = document.getElementById('check-' + id);
+      if (selectedIds.has(id)) {
+        selectedIds.delete(id);
+        el.classList.remove('selected');
+        checkEl.innerHTML = '';
+        playBeep(320, 'sine', 0.08);
+      } else {
+        selectedIds.add(id);
+        el.classList.add('selected');
+        checkEl.innerHTML = '✓';
+        playBeep(520, 'triangle', 0.1);
+      }
+    }
+
+    function playVoice(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 0.85;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function verifyAnswers() {
+      if (isVerified) return;
+      isVerified = true;
+      let score = 0;
+      const total = cardData.items.length;
+
+      cardData.items.forEach(item => {
+        const isSelected = selectedIds.has(item.id);
+        const el = document.querySelector('[data-id="' + item.id + '"]');
+        const correct = (isSelected && item.inImage) || (!isSelected && !item.inImage);
+        if (correct) {
+          score++;
+          if (isSelected) el.classList.add('correct');
+        } else {
+          el.classList.add('wrong');
+        }
+      });
+
+      const banner = document.getElementById('result-banner');
+      banner.classList.add('show');
+
+      if (score === total) {
+        banner.className = 'result-banner show perfect';
+        banner.innerHTML = '🎉 Eccellente! 8/8 Tutti gli elementi individuati!';
+        playBeep(523, 'sine', 0.15);
+        setTimeout(() => playBeep(659, 'sine', 0.15), 100);
+        setTimeout(() => playBeep(784, 'sine', 0.25), 200);
+      } else {
+        banner.className = 'result-banner show partial';
+        banner.innerHTML = '✨ Punteggio: ' + score + '/' + total + ' - I riquadri rossi mostrano gli errori!';
+        playBeep(440, 'sine', 0.15);
+      }
+
+      document.getElementById('verify-btn').style.display = 'none';
+    }
+
+    function resetQuiz() {
+      isVerified = false;
+      selectedIds.clear();
+      document.querySelectorAll('.item-card').forEach(el => {
+        el.className = 'item-card';
+      });
+      document.querySelectorAll('.check-circle').forEach(el => el.innerHTML = '');
+      const banner = document.getElementById('result-banner');
+      banner.className = 'result-banner';
+      banner.innerHTML = '';
+      document.getElementById('verify-btn').style.display = 'flex';
+      playBeep(400, 'sine', 0.08);
+    }
+  </script>
+</body>
+</html>`;
+}
+
+/**
+ * Generates an offline-ready standalone HTML file containing the ENTIRE DECK
+ * with interactive card switcher buttons, navigation, pronunciation, and scoring.
+ */
+export function generateStandaloneDeckHtml(cards: QuizCardData[]): string {
+  const deckDataJson = JSON.stringify(cards).replace(/</g, '\\u003c');
+
+  return `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mazzo Schede Quiz Vocabolario Cinese</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-border: #1f293d;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #f43f5e;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .deck-top-bar {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .deck-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .deck-badges {
+      display: flex;
+      gap: 6px;
+      background: #111827;
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+    }
+    .deck-badge-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: #1f293d;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .deck-badge-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: #818cf8;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+    }
+    .widget-container {
+      width: 100%;
+      max-width: 580px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: rgba(79, 70, 229, 0.18);
+      color: #818cf8;
+      border: 1px solid rgba(129, 140, 248, 0.3);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .title .hanzi {
+      font-family: 'Noto Sans SC', sans-serif;
+      color: #a5b4fc;
+    }
+    .instructions {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .image-box {
+      width: 100%;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      position: relative;
+      background: #0f172a;
+      aspect-ratio: 4 / 3;
+      margin-bottom: 16px;
+    }
+    .image-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    @media (min-width: 480px) {
+      .grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .item-card {
+      background: #0f172a;
+      border: 1.5px solid var(--card-border);
+      border-radius: 14px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+      position: relative;
+      min-height: 84px;
+    }
+    .item-card:hover {
+      border-color: #4338ca;
+      transform: translateY(-2px);
+    }
+    .item-card.selected {
+      background: rgba(79, 70, 229, 0.18);
+      border-color: #6366f1;
+      box-shadow: 0 0 14px rgba(99, 102, 241, 0.25);
+    }
+    .item-card.correct {
+      background: rgba(16, 185, 129, 0.18);
+      border-color: #10b981;
+    }
+    .item-card.wrong {
+      background: rgba(244, 63, 94, 0.18);
+      border-color: #f43f5e;
+    }
+    .hanzi-text {
+      font-family: 'Noto Sans SC', sans-serif;
+      font-size: 28px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+    }
+    .pinyin-text {
+      font-size: 11px;
+      font-weight: 600;
+      color: #a5b4fc;
+    }
+    .italian-text {
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .check-circle {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: white;
+      transition: all 0.15s;
+    }
+    .item-card.selected .check-circle {
+      background: #4f46e5;
+      border-color: #4f46e5;
+    }
+    .audio-btn {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: transparent;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+    .audio-btn:hover {
+      color: #a5b4fc;
+      background: rgba(255,255,255,0.05);
+    }
+    .audio-btn svg {
+      width: 13px;
+      height: 13px;
+    }
+    .footer {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+    .btn {
+      flex: 1;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    }
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    .btn-secondary {
+      background: #1e293b;
+      color: #cbd5e1;
+      border: 1px solid #334155;
+    }
+    .btn-secondary:hover {
+      background: #334155;
+      color: white;
+    }
+    .nav-btn {
+      flex: 0 0 44px;
+      padding: 0;
+    }
+    .result-banner {
+      display: none;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      animation: fadeIn 0.2s ease;
+    }
+    .result-banner.show {
+      display: block;
+    }
+    .result-banner.perfect {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid #10b981;
+      color: #34d399;
+    }
+    .result-banner.partial {
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid #f59e0b;
+      color: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="deck-top-bar">
+    <div class="deck-title">Mazzo Quiz Cinese (${cards.length} schede)</div>
+    <div class="deck-badges" id="deck-badges-container"></div>
+  </div>
+
+  <div class="widget-container">
+    <div class="header">
+      <span class="badge" id="card-badge">SCHEDA #1</span>
+      <div class="title">
+        <span class="hanzi" id="card-title-zh"></span>
+        <span>•</span>
+        <span id="card-title-it"></span>
+      </div>
+      <p class="instructions" id="card-instruction"></p>
+    </div>
+
+    <div class="image-box">
+      <img id="card-img" src="" alt="Quiz Illustration">
+    </div>
+
+    <div class="grid" id="items-grid"></div>
+
+    <div class="footer">
+      <div id="result-banner" class="result-banner"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary nav-btn" id="prev-btn" onclick="prevCard()" title="Scheda precedente">◀</button>
+        <button class="btn btn-secondary" onclick="resetQuiz()">Ricomincia</button>
+        <button class="btn btn-primary" id="verify-btn" onclick="verifyAnswers()">Verifica</button>
+        <button class="btn btn-secondary nav-btn" id="next-btn" onclick="nextCard()" title="Scheda successiva">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const deck = ${deckDataJson};
+    let currentIdx = 0;
+    let selectedMap = {}; // { [cardId]: Set<itemId> }
+    let verifiedMap = {}; // { [cardId]: boolean }
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function playBeep(freq, type, duration) {
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch(e) {}
+    }
+
+    function initBadges() {
+      const container = document.getElementById('deck-badges-container');
+      container.innerHTML = deck.map((c, i) => \`
+        <button class="deck-badge-btn \${i === currentIdx ? 'active' : ''}" onclick="goToCard(\${i})">\${i + 1}</button>
+      \`).join('');
+    }
+
+    function renderCurrentCard() {
+      const card = deck[currentIdx];
+      if (!selectedMap[card.id]) selectedMap[card.id] = new Set();
+
+      document.getElementById('card-badge').textContent = 'SCHEDA #' + (currentIdx + 1);
+      document.getElementById('card-title-zh').textContent = card.titleZh;
+      document.getElementById('card-title-it').textContent = card.titleIt;
+      document.getElementById('card-instruction').textContent = card.instructionIt;
+      document.getElementById('card-img').src = card.imageSrc;
+
+      const grid = document.getElementById('items-grid');
+      const isCardVerified = verifiedMap[card.id] || false;
+
+      grid.innerHTML = card.items.map(it => {
+        const isSelected = selectedMap[card.id].has(it.id);
+        let classes = 'item-card';
+        if (isSelected) classes += ' selected';
+        if (isCardVerified) {
+          const correct = (isSelected && it.inImage) || (!isSelected && !it.inImage);
+          if (correct && isSelected) classes += ' correct';
+          else if (!correct) classes += ' wrong';
+        }
+        return \`
+          <div class="\${classes}" data-id="\${it.id}" onclick="toggleItem('\${it.id}')">
+            <span class="check-circle">\${isSelected ? '✓' : ''}</span>
+            <div class="hanzi-text">\${it.character}</div>
+            <div class="pinyin-text">\${it.pinyin}</div>
+            <div class="italian-text">\${it.italian}</div>
+            <button class="audio-btn" title="Pronuncia" onclick="event.stopPropagation(); playVoice('\${it.character}')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+            </button>
+          </div>
+        \`;
+      }).join('');
+
+      const banner = document.getElementById('result-banner');
+      if (isCardVerified) {
+        banner.className = 'result-banner show';
+        banner.textContent = 'Scheda verificata!';
+        document.getElementById('verify-btn').style.display = 'none';
+      } else {
+        banner.className = 'result-banner';
+        banner.textContent = '';
+        document.getElementById('verify-btn').style.display = 'flex';
+      }
+
+      document.getElementById('prev-btn').disabled = currentIdx === 0;
+      document.getElementById('next-btn').disabled = currentIdx === deck.length - 1;
+      initBadges();
+    }
+
+    function toggleItem(id) {
+      const card = deck[currentIdx];
+      if (verifiedMap[card.id]) return;
+
+      const set = selectedMap[card.id];
+      if (set.has(id)) {
+        set.delete(id);
+        playBeep(320, 'sine', 0.08);
+      } else {
+        set.add(id);
+        playBeep(520, 'triangle', 0.1);
+      }
+      renderCurrentCard();
+    }
+
+    function playVoice(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'zh-CN';
+      utterance.rate = 0.85;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function verifyAnswers() {
+      const card = deck[currentIdx];
+      verifiedMap[card.id] = true;
+      const set = selectedMap[card.id];
+      let score = 0;
+      card.items.forEach(it => {
+        const sel = set.has(it.id);
+        if ((sel && it.inImage) || (!sel && !it.inImage)) score++;
+      });
+      renderCurrentCard();
+
+      const banner = document.getElementById('result-banner');
+      if (score === card.items.length) {
+        banner.className = 'result-banner show perfect';
+        banner.textContent = '🎉 Perfetto! ' + score + '/' + card.items.length + ' Esatto!';
+        playBeep(523, 'sine', 0.15);
+        setTimeout(() => playBeep(659, 'sine', 0.15), 100);
+        setTimeout(() => playBeep(784, 'sine', 0.25), 200);
+      } else {
+        banner.className = 'result-banner show partial';
+        banner.textContent = '✨ Punteggio: ' + score + '/' + card.items.length + ' - Guarda le caselle colorate!';
+        playBeep(440, 'sine', 0.15);
+      }
+    }
+
+    function resetQuiz() {
+      const card = deck[currentIdx];
+      verifiedMap[card.id] = false;
+      selectedMap[card.id].clear();
+      renderCurrentCard();
+      playBeep(400, 'sine', 0.08);
+    }
+
+    function goToCard(idx) {
+      currentIdx = idx;
+      renderCurrentCard();
+    }
+    function prevCard() {
+      if (currentIdx > 0) goToCard(currentIdx - 1);
+    }
+    function nextCard() {
+      if (currentIdx < deck.length - 1) goToCard(currentIdx + 1);
+    }
+
+    // Start
+    renderCurrentCard();
+  </script>
+</body>
+</html>`;
+}
+
+/**
+ * Generates an embeddable iframe HTML snippet for popular CMS (WordPress, Wix, Notion, etc.)
+ */
+export function generateEmbedIframeCode(appUrl: string): string {
+  const cleanUrl = appUrl || window.location.href;
+  return `<!-- Scheda Quiz Cinese Interattiva - Embed Code -->
+<div style="position: relative; width: 100%; max-width: 640px; margin: 0 auto; overflow: hidden; border-radius: 20px; box-shadow: 0 12px 32px rgba(0,0,0,0.25);">
+  <iframe
+    src="${cleanUrl}"
+    width="100%"
+    height="860"
+    style="border: none; display: block; border-radius: 20px;"
+    allow="autoplay"
+    title="Scheda Quiz Vocabolario Cinese"
+  ></iframe>
+</div>`;
+}
+
+/**
+ * Triggers a browser download of any text or HTML content
+ */
+export function downloadTextAsFile(content: string, filename: string, mimeType = 'text/html;charset=utf-8') {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}

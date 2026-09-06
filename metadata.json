@@ -1,0 +1,6 @@
+{
+  "name": "Visual Word Hunt Quiz Card",
+  "description": "Interactive visual observation quiz cards with sequential scenes, character and vocabulary editor, custom card creation, audio pronunciation, and interactive verification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
